@@ -24,8 +24,24 @@ class CscsConsentTests(TestCase):
                         login.accept_consent()
                 request.assert_not_called()
 
+    def test_accepts_a_second_page_id_next_to_the_template_name(self):
+        # Since November 2026 the CSCS page also carries "pageId": "login-oauth-grant" inside kcContext.
+        login = self.page(CONSENT + "?client_id=authx-cli", extra='"pageId": "login-oauth-grant",')
+        with patch.object(login, "request") as request:
+            login.accept_consent()
+        request.assert_called_once_with(
+            "POST", CONSENT + "?client_id=authx-cli", {"code": "test-code", "accept": "Yes"}
+        )
+
+    def test_refuses_a_page_that_is_not_the_consent(self):
+        login = self.page(CONSENT + "?client_id=authx-cli", page_id="login-update-profile.ftl")
+        with patch.object(login, "request") as request:
+            with self.assertRaisesRegex(RuntimeError, "approval page did not load"):
+                login.accept_consent()
+        request.assert_not_called()
+
     @staticmethod
-    def page(action):
+    def page(action, page_id="login-oauth-grant.ftl", extra=""):
         login = CscsLogin()
         escaped_action = action.replace("/", r"\/")
         login.page = SimpleNamespace(
@@ -33,10 +49,11 @@ class CscsConsentTests(TestCase):
             text=f'''
                 <script>
                 const kcContext = {{
+                    {extra}
                     "url": {{ "oauthAction": "{escaped_action}" }},
                     "oauth": {{ "code": "test-code" }}
                 }};
-                kcContext.pageId = "login-oauth-grant.ftl";
+                kcContext.pageId = "{page_id}";
                 </script>
             ''',
         )

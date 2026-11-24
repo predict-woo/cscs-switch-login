@@ -78,7 +78,7 @@ class CscsLogin(SwitchLogin):
 
         actions = theme_values(page, "oauthAction")
         codes = theme_values(page, "code")
-        if theme_values(page, "pageId") != ["login-oauth-grant.ftl"] or len(actions) != 1 or len(codes) != 1:
+        if "login-oauth-grant.ftl" not in theme_values(page, "pageId") or len(actions) != 1 or len(codes) != 1:
             raise RuntimeError("The expected CSCS approval page did not load")
         action = urljoin(self.page.url, actions[0])
         if not client_action(action, CONSENT) or not codes[0]:
